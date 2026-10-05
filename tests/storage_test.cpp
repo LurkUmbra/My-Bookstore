@@ -171,6 +171,52 @@ void testInsertRandom() {
     }
 }
 
+void testErase() {
+    std::remove("t_erase.bin");
+    {
+        BlockList bl("t_erase.bin");
+        for (int i = 1; i <= 10; i++) {
+            char v[16];
+            std::snprintf(v, sizeof(v), "v%d", i);
+            bl.insert(i, v);
+        }
+        CHECK(bl.erase(5), "erase 5 -> true");
+        CHECK(!bl.erase(5), "erase 5 again -> false");
+        CHECK(!bl.erase(999), "erase 999 -> false");
+        CHECK(!bl.erase(0), "erase 0 (below min) -> false");
+
+        char buf[VALUE_SIZE];
+        CHECK(!bl.find(5, buf), "5 gone after erase");
+        CHECK(bl.find(4, buf) && std::strcmp(buf, "v4") == 0, "4 still there");
+        CHECK(bl.find(6, buf) && std::strcmp(buf, "v6") == 0, "6 still there");
+    }
+    {
+        BlockList bl("t_erase.bin");
+        char buf[VALUE_SIZE];
+        CHECK(!bl.find(5, buf), "reopen: 5 still gone");
+        CHECK(bl.find(6, buf),  "reopen: 6 still there");
+    }
+}
+
+void testEraseUntilEmpty() {
+    // 删到块空，验证空块防护
+    std::remove("t_erase2.bin");
+    {
+        BlockList bl("t_erase2.bin");
+        for (int i = 1; i <= 10; i++) {
+            char v[16];
+            std::snprintf(v, sizeof(v), "v%d", i);
+            bl.insert(i, v);
+        }
+        bool allErased = true;
+        for (int i = 1; i <= 10; i++) {
+            if (!bl.erase(i)) { allErased = false; break; }
+        }
+        CHECK(allErased, "erase all 10");
+        CHECK(!bl.erase(1), "erase after empty -> false");
+    }
+}
+
 int main() {
     testEmptyList();
     testFind();
@@ -179,6 +225,8 @@ int main() {
     testInsertSplit();
     testInsertReverse();
     testInsertRandom();
+    testErase();
+    testEraseUntilEmpty();
 
     std::cout << "\n==== Passed: " << passed
               << ", Failed: " << failed << "====\n";

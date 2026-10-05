@@ -122,7 +122,30 @@ bool BlockList::find(int key, char* out) {
 }
 
 bool BlockList::erase(int key) {
-    return false; // TODO
+    int cur = head_;
+    Block b;
+    while (cur != -1) {
+        b = readBlock(cur);
+        if (b.count == 0) { cur = b.next; continue; }
+        if (key < b.keys[0]) return false;
+        if (key > b.keys[b.count - 1]) { cur = b.next; continue; }
+
+        int lo = 0, hi = b.count, pos = -1;
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (key > b.keys[mid]) lo = mid + 1;
+            else if (key < b.keys[mid]) hi = mid;
+            else { pos = mid; break; }
+        }
+
+        if (pos == -1) return false;
+        std::memmove(&b.keys[pos], &b.keys[pos + 1], (b.count - pos - 1) * sizeof(b.keys[0]));
+        std::memmove(&b.values[pos], &b.values[pos + 1], (b.count - pos - 1) * sizeof(b.values[0]));
+        b.count--;
+        writeBlock(cur, b);
+        return true;
+    }
+    return false;
 }
 
 Block BlockList::readBlock(int blockId) {
