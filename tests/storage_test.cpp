@@ -65,10 +65,62 @@ void testPersistence() {
     }    
 }
 
+void testInsertBasic() {
+    std::remove("t_ins.bin");
+    {
+        BlockList bl("t_ins.bin");
+        CHECK(bl.insert(20, "twenty"), "insert 20");
+        CHECK(bl.insert(10, "ten"),    "insert 10");
+        CHECK(bl.insert(30, "thirty"), "insert 30");
+        CHECK(!bl.insert(20, "dup"),   "duplicate 20 -> false");
+
+        char buf[VALUE_SIZE];
+        CHECK(bl.find(10, buf) && std::strcmp(buf, "ten") == 0,    "after insert, find 10");
+        CHECK(bl.find(30, buf) && std::strcmp(buf, "thirty") == 0, "after insert, find 30");
+    }
+    {
+        BlockList bl("t_ins.bin");
+        char buf[VALUE_SIZE];
+        CHECK(bl.find(10, buf) && std::strcmp(buf, "ten") == 0,    "reopen: find 10");
+        CHECK(bl.find(20, buf) && std::strcmp(buf, "twenty") == 0, "reopen: find 20");
+        CHECK(bl.find(30, buf) && std::strcmp(buf, "thirty") == 0, "reopen: find 30");
+    }
+}
+
+void testInsertSplit() {
+    std::remove("t_split.bin");
+    int n = CAPACITY + 5;   // 必然触发分裂
+    {
+        BlockList bl("t_split.bin");
+        bool allIns = true;
+        for (int i = 1; i <= n; i++) {
+            char val[32];
+            std::snprintf(val, sizeof(val), "val_%d", i);
+            if (!bl.insert(i, val)) { allIns = false; break; }
+        }
+        CHECK(allIns, "split: insert CAPACITY+5 keys all succeed");
+    }
+    {
+        BlockList bl("t_split.bin");
+        char buf[VALUE_SIZE];
+        bool allFound = true;
+        for (int i = 1; i <= n; i++) {
+            if (!bl.find(i, buf)) { allFound = false; break; }
+        }
+        CHECK(allFound, "split: reopen, all keys found");
+
+        // 抽样校验 value 内容
+        CHECK(bl.find(1, buf) && std::strcmp(buf, "val_1") == 0, "split: find(1) -> val_1");
+        CHECK(bl.find(n, buf), "split: find(last) ok");
+    }
+}
+
 int main() {
     testEmptyList();
     testFind();
     testPersistence();
+    testInsertBasic();
+    testInsertSplit();
 
     std::cout << "\n==== Passed: " << passed
               << ", Failed: " << failed << "====\n";

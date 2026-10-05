@@ -15,8 +15,8 @@ constexpr int VALUE_SIZE = 64;   // 每条 value 的字节数（定长）
 struct Block {
     int  count = 0;                        // 本块有效元素数（头块忽略此字段）
     int  next  = -1;                       // 下一块块号；-1 表示无
-    int  keys[CAPACITY];                   // 按 key 升序排列
-    char values[CAPACITY][VALUE_SIZE];     // 与 keys 一一对应；'\0' 结尾
+    int  keys[CAPACITY + 1];                   // 按 key 升序排列
+    char values[CAPACITY + 1][VALUE_SIZE];     // 与 keys 一一对应；'\0' 结尾
 };
 
 class BlockList {
