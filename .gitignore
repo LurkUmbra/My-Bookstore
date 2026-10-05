@@ -12,3 +12,4 @@ code
 # 测试运行产物
 test_data/
 test_output/
+*bin
