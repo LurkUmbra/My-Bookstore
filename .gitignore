@@ -1,0 +1,14 @@
+# IDE
+.idea/
+.clang-format
+.vscode
+
+# 构建产物
+build/
+cmake-build-debug/
+code
+*exe
+
+# 测试运行产物
+test_data/
+test_output/
