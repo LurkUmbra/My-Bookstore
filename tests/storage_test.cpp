@@ -115,12 +115,70 @@ void testInsertSplit() {
     }
 }
 
+void testInsertReverse() {
+    std::remove("t_rev.bin");
+    int n = CAPACITY + 10;
+    // 逆序插入：每次都往头部插，迫使首块反复腾位置、分裂
+    {
+        BlockList bl("t_rev.bin");
+        bool ok = true;
+        for (int i = n; i >= 1; i--) {
+            char val[32];
+            std::snprintf(val, sizeof(val), "v%d", i);
+            if (!bl.insert(i, val)) { ok = false; break; }
+        }
+        CHECK(ok, "reverse: all inserted");
+    }
+    {
+        BlockList bl("t_rev.bin");
+        char buf[VALUE_SIZE];
+        bool allFound = true;
+        for (int i = 1; i <= n; i++) {
+            if (!bl.find(i, buf)) { allFound = false; break; }
+        }
+        CHECK(allFound, "reverse: reopen, all found");
+    }
+}
+
+void testInsertRandom() {
+    std::remove("t_rand.bin");
+    int n = CAPACITY * 3 + 7;   // 跨多个块，触发多次分裂
+    int keys[200];
+    for (int i = 0; i < n; i++) keys[i] = i * 2;   // 0, 2, 4, ...
+    // 简单打乱（洗牌）
+    for (int i = n - 1; i > 0; i--) {
+        int j = (i * 7 + 3) % (i + 1);   // 确定性"伪随机"，便于复现
+        int t = keys[i]; keys[i] = keys[j]; keys[j] = t;
+    }
+    {
+        BlockList bl("t_rand.bin");
+        bool ok = true;
+        for (int i = 0; i < n; i++) {
+            char val[32];
+            std::snprintf(val, sizeof(val), "k%d", keys[i]);
+            if (!bl.insert(keys[i], val)) { ok = false; break; }
+        }
+        CHECK(ok, "random: all inserted");
+    }
+    {
+        BlockList bl("t_rand.bin");
+        char buf[VALUE_SIZE];
+        bool allFound = true;
+        for (int i = 0; i < n; i++) {
+            if (!bl.find(keys[i], buf)) { allFound = false; break; }
+        }
+        CHECK(allFound, "random: reopen, all found");
+    }
+}
+
 int main() {
     testEmptyList();
     testFind();
     testPersistence();
     testInsertBasic();
     testInsertSplit();
+    testInsertReverse();
+    testInsertRandom();
 
     std::cout << "\n==== Passed: " << passed
               << ", Failed: " << failed << "====\n";
