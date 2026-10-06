@@ -210,6 +210,52 @@ void testDifferentTypes() {
           && std::strcmp(buf, "a-much-longer-value-here") == 0, "large type: find long key");
 }
 
+void testTraverse() {
+    std::remove("t_trav.bin");
+    BL bl("t_trav.bin");
+    // 插 10 条：key "1".."10"，value 是 key*100
+    for (int i = 1; i <= 10; i++) {
+        char v[16];
+        std::snprintf(v, sizeof(v), "%d", i * 100);
+        bl.insert(k(i).c_str(), v);
+    }
+
+    // 1) 全遍历：应访问 10 次
+    int cnt = 0;
+    std::string all;
+    bl.traverse([&](const char* key, const char*) {
+        all += key; all += ",";
+        cnt++;
+        return true;
+    });
+    CHECK(cnt == 10, "traverse: visited 10 entries");
+    // 字符串是字典序，所以 "1" < "10" < "2" ...
+    CHECK(all == "1,10,2,3,4,5,6,7,8,9,", "traverse: keys in lexicographic order");
+
+    // 2) 提前停止：只取 3 个
+    int n3 = 0;
+    bl.traverse([&](const char*, const char*) {
+        return ++n3 < 3;   // 第 3 个时返回 false，停止
+    });
+    CHECK(n3 == 3, "traverse: early stop after 3");
+
+    // 3) 范围遍历 [3, 7)：应访问 "3","4","5","6"（"10" 不在此范围，"7" 不含）
+    std::string range;
+    bl.traverseRange("3", "7", [&](const char* key, const char*) {
+        range += key; range += ",";
+        return true;
+    });
+    CHECK(range == "3,4,5,6,", "traverseRange[3,7): got 3,4,5,6");
+
+    // 4) 前缀式范围：模拟 "1|" 前缀扫描，用 ["10", "11") 应只命中 "10"
+    std::string pfx;
+    bl.traverseRange("10", "11", [&](const char* key, const char*) {
+        pfx += key; pfx += ",";
+        return true;
+    });
+    CHECK(pfx == "10,", "traverseRange[10,11): only key '10'");
+}
+
 int main() {
     testEmptyList();
     testInsertAndFind();
@@ -220,6 +266,7 @@ int main() {
     testErase();
     testEraseUntilEmpty();
     testDifferentTypes();
+    testTraverse();
 
     std::cout << "\n==== Passed: " << passed
               << ", Failed: " << failed << "====\n";

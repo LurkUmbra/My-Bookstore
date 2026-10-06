@@ -203,6 +203,34 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::erase(const char* key)
     return false;
 }
 
+template <int KEY_SIZE, int VALUE_SIZE>
+template <typename Func>
+void BlockList<KEY_SIZE, VALUE_SIZE>::traverse(Func fn) {
+    int cur = head_;
+    while (cur != -1) {
+        Block b = readBlock(cur);
+        for (int i = 0; i < b.count; i++) {
+            if (!fn(b.keys[i], b.values[i])) return;
+        }
+        cur = b.next;
+    }
+}
+
+template <int KEY_SIZE, int VALUE_SIZE>
+template <typename Func>
+void BlockList<KEY_SIZE, VALUE_SIZE>::traverseRange(const char* lo, const char* hi, Func fn) {
+    int cur = head_;
+    while (cur != -1) {
+        Block b = readBlock(cur);
+        for (int i = 0; i < b.count; i++) {
+            if (std::strcmp(b.keys[i], lo) < 0) continue;
+            if (std::strcmp(b.keys[i], hi) >= 0) return;
+            if (!fn(b.keys[i], b.values[i])) return;
+        }
+        cur = b.next;
+    }
+}
+
 template<int KEY_SIZE, int VALUE_SIZE>
 typename BlockList<KEY_SIZE, VALUE_SIZE>::Block
 BlockList<KEY_SIZE, VALUE_SIZE>::readBlock(int blockId)

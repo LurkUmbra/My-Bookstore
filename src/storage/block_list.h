@@ -34,7 +34,11 @@ public:
     // 删除 key。成功返回 true；不存在返回 false。
     bool erase(const char* key);
 
-    // TODO(P1 第二阶段): traverse 按 key 升序遍历，供 show 使用。
+    template <typename Func>
+    void traverse(Func fn);
+
+    template <typename Func>
+    void traverseRange(const char* lo, const char* hi, Func fn);
 
 private:
     std::fstream file_;
