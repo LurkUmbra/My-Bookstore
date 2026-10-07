@@ -4,43 +4,38 @@
 #include <cstring>
 #include <string>
 
-// ============================================================
-// 图书的持久化记录结构（POD，可整体 memcpy 到 BlockList 的 value 里）
-// ============================================================
-// 警告：这是本项目的私有文件格式。
-//   改动字段顺序 / 类型 / 数组长度，会导致旧文件不兼容！
+// Persistent record for a book (POD, memcpy-able into BlockList value).
 //
-// 为什么用 char[] 而不是 std::string？
-//   char[] 是 POD，能整体读写；std::string 内含指针，写进文件就是垃圾。
+// WARNING: this is a private file format. Reordering or resizing fields
+// breaks compatibility with existing books.dat files.
+//
+// char[] instead of std::string: POD can be written as raw bytes, while
+// std::string holds internal pointers that must not be persisted.
 struct BookData {
-    char   name[MAX_NAME + 1];       // 61 字节（含 '\0'）
-    char   author[MAX_AUTHOR + 1];   // 61
-    char   keyword[MAX_KEYWORD + 1]; // 61，多关键词以 '|' 分隔
-    double price;                    // 单价（输出精度 2 位小数）
-    int    stock;                    // 库存数量
+    char   name[MAX_NAME + 1];
+    char   author[MAX_AUTHOR + 1];
+    char   keyword[MAX_KEYWORD + 1];   // multiple keywords joined by '|'
+    double price;
+    int    stock;
 };
 
 static_assert(sizeof(BookData) <= BOOK_VALUE_SIZE,
               "BookData exceeds BOOK_VALUE_SIZE, enlarge it in constants.h");
 
-// ============================================================
-// 图书系统：主数据 + 3 个二级索引
-// ============================================================
+// Book system: primary data plus three secondary indexes.
 class BookSystem {
 public:
     BookSystem();
 
-    // ========== 序列化 / 反序列化 ==========
-    // 把 BookData 打包进定长字节缓冲（存之前）
+    // Serialization helpers.
     static void pack(const BookData& d, char* out);
-    // 从定长字节缓冲还原 BookData（读之后）
     static void unpack(const char* buf, BookData& d);
 
-    // ========== 业务操作（本轮先声明，下轮实现）==========
-    // 新建图书（首次录入完整信息）
+    // Create a new book with full information.
     bool createBook(const char* isbn, const char* name, const char* author,
                     const char* keyword, double price);
-    // 按 ISBN 查，找到则填充
+
+    // Fetch a book by ISBN.
     bool getByISBN(const char* isbn, BookData& out);
 
     template <typename Func>
@@ -52,13 +47,22 @@ public:
     template <typename Func>
     void showByKeyword(const char* keyword, Func fn);
 
+    // Fields to update in modifyBook. A null pointer means "leave unchanged".
+    struct ModifyFields {
+        const char*   name    = nullptr;
+        const char*   author  = nullptr;
+        const char*   keyword = nullptr;
+        const double* price   = nullptr;   // pointer so 0 is distinguishable
+    };
+    bool modifyBook(const char* isbn, const ModifyFields& fields);
+
 private:
     BlockList<BOOK_KEY_SIZE, BOOK_VALUE_SIZE> books_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> nameIdx_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> authorIdx_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> keywordIdx_;
 
-    // 构造索引 key："字段值|ISBN"
+    // Build an index key of the form "field|isbn".
     static void buildIdxKey(char* out, int outSize, const char* field, const char* isbn);
 };
 
