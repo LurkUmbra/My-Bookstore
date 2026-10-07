@@ -44,13 +44,11 @@ private:
     std::fstream file_;
     int head_ = -1;    // 头块里 head 的内存缓存，避免每次操作都读 0 号块
 
-    // ===== 内部工具（由你实现）=====
     // 读/写第 blockId 块。内部用 seekg/seekp + read/write，不要漏掉 reinterpret_cast。
     Block readBlock(int blockId);
     void  writeBlock(int blockId, const Block& b);
 
     // 在文件尾追加一个新块，返回其块号。
-    // 提示：先 file_.seekp(0, std::ios::end) 得到文件大小，再据此算新块号。
     int   newBlock();
 
     // 更新 head_ 并写回 0 号块。

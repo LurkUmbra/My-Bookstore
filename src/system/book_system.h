@@ -43,6 +43,9 @@ public:
     // 按 ISBN 查，找到则填充
     bool getByISBN(const char* isbn, BookData& out);
 
+    template <typename Func>
+    void showByName(const char* name, Func fn);
+    
 private:
     BlockList<BOOK_KEY_SIZE, BOOK_VALUE_SIZE> books_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> nameIdx_;

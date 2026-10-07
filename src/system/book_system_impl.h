@@ -1,8 +1,7 @@
 #pragma once
 #include <sstream>
-// 实现在此，被 book_system.h 末尾包含（模板/内联风格）
+#include <cstdio>
 
-// 构造函数：成员初始化列表，顺序必须与声明顺序一致
 inline BookSystem::BookSystem()
     : books_("books.dat")
     , nameIdx_("name.idx")
@@ -71,4 +70,19 @@ inline bool BookSystem::getByISBN(const char* isbn, BookData& out) {
     if (!books_.find(isbn, buf)) return false;
     unpack(buf, out);
     return true;
+}
+
+template <typename Func>
+inline void BookSystem::showByName(const char* name, Func fn) {
+    char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
+    std::snprintf(lo, IDX_KEY_SIZE, "%s|", name);
+    std::snprintf(hi, IDX_KEY_SIZE, "%s}", name);
+
+    nameIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
+        BookData d;
+        if (getByISBN(isbn, d)) {
+            return fn(d);
+        }
+        return true;
+    });
 }
