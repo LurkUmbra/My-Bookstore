@@ -86,3 +86,33 @@ inline void BookSystem::showByName(const char* name, Func fn) {
         return true;
     });
 }
+
+template <typename Func>
+inline void BookSystem::showByAuthor(const char* author, Func fn) {
+    char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
+    std::snprintf(lo, IDX_KEY_SIZE, "%s|", author);
+    std::snprintf(hi, IDX_KEY_SIZE, "%s}", author);
+
+    authorIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
+        BookData d;
+        if (getByISBN(isbn, d)) {
+            return fn(d);
+        }
+        return true;
+    });
+}
+
+template <typename Func>
+inline void BookSystem::showByKeyword(const char* keyword, Func fn) {
+    char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
+    std::snprintf(lo, IDX_KEY_SIZE, "%s|", keyword);
+    std::snprintf(hi, IDX_KEY_SIZE, "%s}", keyword);
+    
+    keywordIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
+        BookData d;
+        if (getByISBN(isbn, d)) {
+            return fn(d);
+        }
+        return true;
+    });
+}

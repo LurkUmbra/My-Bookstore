@@ -45,7 +45,13 @@ public:
 
     template <typename Func>
     void showByName(const char* name, Func fn);
-    
+
+    template <typename Func>
+    void showByAuthor(const char* author, Func fn);
+
+    template <typename Func>
+    void showByKeyword(const char* keyword, Func fn);
+
 private:
     BlockList<BOOK_KEY_SIZE, BOOK_VALUE_SIZE> books_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> nameIdx_;
