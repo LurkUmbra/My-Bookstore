@@ -39,7 +39,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::insert(const char* key, const char *value)
         Block nb{};
         nb.count++;
         std::strcpy(nb.keys[0], key);
-        std::strcpy(nb.values[0], value);
+        std::memcpy(nb.values[0], value, VALUE_SIZE);
         writeBlock(newHead, nb);
         return true;
     }
@@ -63,7 +63,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::insert(const char* key, const char *value)
     if (!found)
     { // insert to the end of the list
         std::strcpy(b.keys[b.count], key);
-        std::strcpy(b.values[b.count], value);
+        std::memcpy(b.values[b.count], value, VALUE_SIZE);
         b.count++;
     }
     else
@@ -90,7 +90,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::insert(const char* key, const char *value)
         std::memmove(&b.keys[pos + 1], &b.keys[pos], (b.count - pos) * sizeof(b.keys[0]));
         std::memmove(&b.values[pos + 1], &b.values[pos], (b.count - pos) * sizeof(b.values[0]));
         std::strcpy(b.keys[pos], key);
-        std::strcpy(b.values[pos], value);
+        std::memcpy(b.values[pos], value, VALUE_SIZE);
         b.count++;
     }
 
@@ -105,7 +105,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::insert(const char* key, const char *value)
         for (int i = pos; i < b.count; i++)
         {
             std::strcpy(newBlock.keys[i - pos], b.keys[i]);
-            std::strcpy(newBlock.values[i - pos], b.values[i]);
+            std::memcpy(newBlock.values[i - pos], b.values[i], VALUE_SIZE);
         }
         newBlock.count = b.count - pos;
         b.count = pos;
@@ -146,7 +146,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::find(const char* key, char *out)
                 hi = mid;
             else
             {
-                std::strcpy(out, b.values[mid]);
+                std::memcpy(out, b.values[mid], VALUE_SIZE);
                 return true;
             }
         }

@@ -9,34 +9,33 @@ static int passed = 0, failed = 0;
     else      { printf("[FAIL] %s\n", msg); failed++; } \
 } while (0)
 
-int main() {
+static void clean() {
     std::remove("books.dat");
     std::remove("name.idx");
     std::remove("author.idx");
     std::remove("keyword.idx");
+}
 
-    BookSystem sys;
+int main() {
+    clean();
+    {
+        BookSystem sys;
+        CHECK(sys.createBook("ISBN-001", "Math", "Wu", "sci|algo", 45.0), "create book 1");
+        CHECK(sys.createBook("ISBN-002", "Physics", "Wu", "sci", 60.0), "create book 2");
+        CHECK(!sys.createBook("ISBN-001", "Dup", "X", "y", 1.0), "duplicate ISBN -> false");
 
-    // pack / unpack 往返测试
-    BookData d{};
-    std::strncpy(d.name, "Math", sizeof(d.name) - 1);
-    std::strncpy(d.author, "Wu", sizeof(d.author) - 1);
-    std::strncpy(d.keyword, "sci", sizeof(d.keyword) - 1);
-    d.price = 45.0;
-    d.stock = 10;
+        BookData d;
+        CHECK(sys.getByISBN("ISBN-001", d), "getByISBN found");
+        CHECK(std::strcmp(d.name, "Math") == 0, "name correct");
+        CHECK(std::strcmp(d.author, "Wu") == 0, "author correct");
+        CHECK(std::strcmp(d.keyword, "sci|algo") == 0, "keyword correct");
+        CHECK(d.price == 45.0, "price correct");
+        CHECK(d.stock == 0, "new book stock = 0");
 
-    char buf[BOOK_VALUE_SIZE];
-    BookSystem::pack(d, buf);
+        CHECK(!sys.getByISBN("NOPE", d), "getByISBN not found");
+    }
 
-    BookData d2{};
-    BookSystem::unpack(buf, d2);
-
-    CHECK(std::strcmp(d2.name, "Math") == 0, "pack/unpack: name");
-    CHECK(std::strcmp(d2.author, "Wu") == 0, "pack/unpack: author");
-    CHECK(std::strcmp(d2.keyword, "sci") == 0, "pack/unpack: keyword");
-    CHECK(d2.price == 45.0, "pack/unpack: price");
-    CHECK(d2.stock == 10, "pack/unpack: stock");
-
+    clean();
     printf("\n==== Passed: %d, Failed: %d ====\n", passed, failed);
     return failed == 0 ? 0 : 1;
 }

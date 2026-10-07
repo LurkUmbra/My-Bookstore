@@ -1,4 +1,5 @@
 #pragma once
+#include <sstream>
 // 实现在此，被 book_system.h 末尾包含（模板/内联风格）
 
 // 构造函数：成员初始化列表，顺序必须与声明顺序一致
@@ -24,12 +25,45 @@ inline void BookSystem::buildIdxKey(char* out, int outSize, const char* field, c
     std::snprintf(out, outSize, "%s|%s", field, isbn);
 }
 
-// ---------- 业务操作（占位，下轮实现）----------
 inline bool BookSystem::createBook(const char* isbn, const char* name, const char* author,
                                    const char* keyword, double price) {
-    // TODO(next): 校验 + 写主数据 + 写三个索引（保持原子性）
-    (void)isbn; (void)name; (void)author; (void)keyword; (void)price;
-    return false;
+    if (!isbn || !*isbn)       return false;
+    if (!name || !*name)       return false;
+    if (!author || !*author)   return false;
+    if (!keyword || !*keyword) return false;
+    if (price < 0)             return false;
+
+    char tmp[BOOK_VALUE_SIZE];
+    if (books_.find(isbn, tmp)) return false;
+
+    BookData d{};
+    std::strncpy(d.name,    name,    MAX_NAME);
+    std::strncpy(d.author,  author,  MAX_AUTHOR);
+    std::strncpy(d.keyword, keyword, MAX_KEYWORD);
+    d.price = price;
+    d.stock = 0;
+
+    char packed[BOOK_VALUE_SIZE];
+    pack(d, packed);
+    books_.insert(isbn, packed);
+
+    char idxKey[IDX_KEY_SIZE];
+
+    buildIdxKey(idxKey, IDX_KEY_SIZE, name, isbn);
+    nameIdx_.insert(idxKey, isbn);
+
+    buildIdxKey(idxKey, IDX_KEY_SIZE, author, isbn);
+    authorIdx_.insert(idxKey, isbn);
+
+    std::string kwStr(keyword);
+    std::istringstream iss(kwStr);
+    std::string seg;
+    while (std::getline(iss, seg, '|')) {
+        buildIdxKey(idxKey, IDX_KEY_SIZE, seg.c_str(), isbn);
+        keywordIdx_.insert(idxKey, isbn);
+    }
+
+    return true;
 }
 
 inline bool BookSystem::getByISBN(const char* isbn, BookData& out) {

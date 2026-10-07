@@ -40,7 +40,7 @@ public:
     // 新建图书（首次录入完整信息）
     bool createBook(const char* isbn, const char* name, const char* author,
                     const char* keyword, double price);
-    // 按 ISBN 查，找到则填充 out
+    // 按 ISBN 查，找到则填充
     bool getByISBN(const char* isbn, BookData& out);
 
 private:

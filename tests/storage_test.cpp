@@ -12,12 +12,25 @@ static int passed = 0, failed = 0;
     else      { std::cout << "[FAIL]" << msg << std::endl; failed++; } \
 } while (0)
 
-// 测试用尺寸：key 21（ISBN 量级），value 64
+// 测试用尺寸：key 21，value 64
 constexpr int KS = 21;
 constexpr int VS = 64;
 using BL = BlockList<KS, VS>;
 
-// 把整数转成字符串 key（测试里用 "1", "2", ... 当 key）
+// 把 C 字符串打包成定长 VS 缓冲区
+static void packStr(const char* s, char* buf) {
+    std::memset(buf, 0, VS);
+    std::strncpy(buf, s, VS - 1);
+}
+
+// 插入辅助：自动把字符串 value 打包成定长
+static bool insStr(BL& bl, const char* key, const char* val) {
+    char buf[VS];
+    packStr(val, buf);
+    return bl.insert(key, buf);
+}
+
+// 整型 key 辅助
 static std::string k(int i) { return std::to_string(i); }
 
 void testEmptyList() {
@@ -31,9 +44,9 @@ void testInsertAndFind() {
     std::remove("t_data.bin");
     {
         BL bl("t_data.bin");
-        CHECK(bl.insert("20", "twenty"), "insert 20");
-        CHECK(bl.insert("10", "ten"),    "insert 10");
-        CHECK(bl.insert("30", "thirty"), "insert 30");
+        CHECK(insStr(bl, "20", "twenty"), "insert 20");
+        CHECK(insStr(bl, "10", "ten"),    "insert 10");
+        CHECK(insStr(bl, "30", "thirty"), "insert 30");
 
         char buf[VS];
         CHECK(bl.find("20", buf) && std::strcmp(buf, "twenty") == 0, "find 20 -> twenty");
@@ -52,10 +65,10 @@ void testInsertBasic() {
     std::remove("t_ins.bin");
     {
         BL bl("t_ins.bin");
-        CHECK(bl.insert("20", "twenty"), "insert 20");
-        CHECK(bl.insert("10", "ten"),    "insert 10");
-        CHECK(bl.insert("30", "thirty"), "insert 30");
-        CHECK(!bl.insert("20", "dup"),   "duplicate 20 -> false");
+        CHECK(insStr(bl, "20", "twenty"), "insert 20");
+        CHECK(insStr(bl, "10", "ten"),    "insert 10");
+        CHECK(insStr(bl, "30", "thirty"), "insert 30");
+        CHECK(!insStr(bl, "20", "dup"),   "duplicate 20 -> false");
 
         char buf[VS];
         CHECK(bl.find("10", buf) && std::strcmp(buf, "ten") == 0,    "after insert, find 10");
@@ -79,7 +92,7 @@ void testInsertSplit() {
         for (int i = 1; i <= n; i++) {
             char val[32];
             std::snprintf(val, sizeof(val), "val_%d", i);
-            if (!bl.insert(k(i).c_str(), val)) { allIns = false; break; }
+            if (!insStr(bl, k(i).c_str(), val)) { allIns = false; break; }
         }
         CHECK(allIns, "split: insert CAPACITY+5 keys all succeed");
     }
@@ -105,7 +118,7 @@ void testInsertReverse() {
         for (int i = n; i >= 1; i--) {
             char val[32];
             std::snprintf(val, sizeof(val), "v%d", i);
-            if (!bl.insert(k(i).c_str(), val)) { ok = false; break; }
+            if (!insStr(bl, k(i).c_str(), val)) { ok = false; break; }
         }
         CHECK(ok, "reverse: all inserted");
     }
@@ -135,7 +148,7 @@ void testInsertRandom() {
         for (int i = 0; i < n; i++) {
             char val[32];
             std::snprintf(val, sizeof(val), "k%d", keys[i]);
-            if (!bl.insert(k(keys[i]).c_str(), val)) { ok = false; break; }
+            if (!insStr(bl, k(keys[i]).c_str(), val)) { ok = false; break; }
         }
         CHECK(ok, "random: all inserted");
     }
@@ -157,7 +170,7 @@ void testErase() {
         for (int i = 1; i <= 10; i++) {
             char v[16];
             std::snprintf(v, sizeof(v), "v%d", i);
-            bl.insert(k(i).c_str(), v);
+            insStr(bl, k(i).c_str(), v);
         }
         CHECK(bl.erase("5"), "erase 5 -> true");
         CHECK(!bl.erase("5"), "erase 5 again -> false");
@@ -184,7 +197,7 @@ void testEraseUntilEmpty() {
         for (int i = 1; i <= 10; i++) {
             char v[16];
             std::snprintf(v, sizeof(v), "v%d", i);
-            bl.insert(k(i).c_str(), v);
+            insStr(bl, k(i).c_str(), v);
         }
         bool allErased = true;
         for (int i = 1; i <= 10; i++) {
@@ -195,14 +208,23 @@ void testEraseUntilEmpty() {
     }
 }
 
+// 通用 insert 辅助（不同尺寸）
+template <int KS_, int VS_>
+static bool insStrT(BlockList<KS_, VS_>& bl, const char* key, const char* val) {
+    char buf[VS_];
+    std::memset(buf, 0, VS_);
+    std::strncpy(buf, val, VS_ - 1);
+    return bl.insert(key, buf);
+}
+
 void testDifferentTypes() {
     std::remove("t_a.bin");
     std::remove("t_b.bin");
     BlockList<21, 64>  small("t_a.bin");
     BlockList<31, 128> large("t_b.bin");
 
-    small.insert("k", "v");
-    large.insert("a-much-longer-key", "a-much-longer-value-here");
+    insStrT(small, "k", "v");
+    insStrT(large, "a-much-longer-key", "a-much-longer-value-here");
 
     char buf[128];
     CHECK(small.find("k", buf) && std::strcmp(buf, "v") == 0, "small type: find k");
@@ -213,14 +235,12 @@ void testDifferentTypes() {
 void testTraverse() {
     std::remove("t_trav.bin");
     BL bl("t_trav.bin");
-    // 插 10 条：key "1".."10"，value 是 key*100
     for (int i = 1; i <= 10; i++) {
         char v[16];
         std::snprintf(v, sizeof(v), "%d", i * 100);
-        bl.insert(k(i).c_str(), v);
+        insStr(bl, k(i).c_str(), v);
     }
 
-    // 1) 全遍历：应访问 10 次
     int cnt = 0;
     std::string all;
     bl.traverse([&](const char* key, const char*) {
@@ -229,17 +249,14 @@ void testTraverse() {
         return true;
     });
     CHECK(cnt == 10, "traverse: visited 10 entries");
-    // 字符串是字典序，所以 "1" < "10" < "2" ...
     CHECK(all == "1,10,2,3,4,5,6,7,8,9,", "traverse: keys in lexicographic order");
 
-    // 2) 提前停止：只取 3 个
     int n3 = 0;
     bl.traverse([&](const char*, const char*) {
-        return ++n3 < 3;   // 第 3 个时返回 false，停止
+        return ++n3 < 3;
     });
     CHECK(n3 == 3, "traverse: early stop after 3");
 
-    // 3) 范围遍历 [3, 7)：应访问 "3","4","5","6"（"10" 不在此范围，"7" 不含）
     std::string range;
     bl.traverseRange("3", "7", [&](const char* key, const char*) {
         range += key; range += ",";
@@ -247,7 +264,6 @@ void testTraverse() {
     });
     CHECK(range == "3,4,5,6,", "traverseRange[3,7): got 3,4,5,6");
 
-    // 4) 前缀式范围：模拟 "1|" 前缀扫描，用 ["10", "11") 应只命中 "10"
     std::string pfx;
     bl.traverseRange("10", "11", [&](const char* key, const char*) {
         pfx += key; pfx += ",";
