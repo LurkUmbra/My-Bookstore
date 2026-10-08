@@ -56,6 +56,12 @@ public:
     };
     bool modifyBook(const char* isbn, const ModifyFields& fields);
 
+    // Reduce stock by quantity; totalCost = price * quantity.
+    bool buyBook(const char* isbn, int quantity, double& totalCost);
+
+    // Increase stock by quantity.
+    bool importBook(const char* isbn, int quantity, double totalCost);
+
 private:
     BlockList<BOOK_KEY_SIZE, BOOK_VALUE_SIZE> books_;
     BlockList<IDX_KEY_SIZE,   IDX_VALUE_SIZE> nameIdx_;

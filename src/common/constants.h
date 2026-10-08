@@ -20,3 +20,6 @@ constexpr int IDX_VALUE_SIZE = MAX_ISBN + 1;     // 21
 
 constexpr int ACC_KEY_SIZE   = MAX_USERID + 1;   // 31
 constexpr int ACC_VALUE_SIZE = 128;
+
+constexpr int LOG_KEY_SIZE   = 21;
+constexpr int LOG_VALUE_SIZE = 24;

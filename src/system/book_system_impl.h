@@ -142,6 +142,32 @@ inline bool BookSystem::modifyBook(const char* isbn, const ModifyFields& fields)
     return true;
 }
 
+inline bool BookSystem::buyBook(const char* isbn, int quantity, double& totalCost) {
+    if (quantity <= 0) return false;
+    BookData d;
+    if (!getByISBN(isbn, d)) return false;
+    totalCost = d.price * quantity;
+    d.stock -= quantity;
+    char packed[BOOK_VALUE_SIZE];
+    pack(d, packed);
+    books_.erase(isbn);
+    books_.insert(isbn, packed);
+    return true;
+}
+
+inline bool BookSystem::importBook(const char* isbn, int quantity, double totalCost) {
+    if (quantity <= 0) return false;
+    if (totalCost <= 0) return false;
+    BookData d;
+    if (!getByISBN(isbn, d)) return false;
+    d.stock += quantity;
+    char packed[BOOK_VALUE_SIZE];
+    pack(d, packed);
+    books_.erase(isbn);
+    books_.insert(isbn, packed);
+    return true;
+}
+
 template <typename Func>
 inline void BookSystem::showByName(const char* name, Func fn) {
     char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
