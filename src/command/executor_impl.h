@@ -17,6 +17,11 @@ inline void Executor::printInvalid() const {
     std::printf("Invalid\n");
 }
 
+inline void Executor::recordOp(const char* action) {
+    const char* u = acc_.currentUser();
+    log_.recordOperation(u ? u : "(guest)", action);
+}
+
 inline void Executor::printBook(const char* isbn, const BookData& d) const {
     std::printf("%s\t%s\t%s\t%s\t%.2f\t%d\n",
                 isbn, d.name, d.author, d.keyword, d.price, d.stock);
@@ -73,7 +78,9 @@ inline void Executor::cmdLogout(const std::vector<std::string>& t) {
 
 inline void Executor::cmdRegister(const std::vector<std::string>& t) {
     if (t.size() != 4) { printInvalid(); return; }
-    if (!acc_.registerUser(t[1].c_str(), t[2].c_str(), t[3].c_str())) printInvalid();
+    if (!acc_.registerUser(t[1].c_str(), t[2].c_str(), t[3].c_str())) { printInvalid(); return; }
+    std::string act = "register "; act += t[1];
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdPasswd(const std::vector<std::string>& t) {
@@ -81,19 +88,25 @@ inline void Executor::cmdPasswd(const std::vector<std::string>& t) {
     const char* userid = t[1].c_str();
     const char* cur = (t.size() == 4) ? t[2].c_str() : nullptr;
     const char* nw  = (t.size() == 4) ? t[3].c_str() : t[2].c_str();
-    if (!acc_.changePassword(userid, cur, nw)) printInvalid();
+    if (!acc_.changePassword(userid, cur, nw)) { printInvalid(); return; }
+    std::string act = "passwd "; act += userid;
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdUseradd(const std::vector<std::string>& t) {
     if (t.size() != 5) { printInvalid(); return; }
     if (t[3].size() != 1 || t[3][0] < '0' || t[3][0] > '9') { printInvalid(); return; }
     int priv = t[3][0] - '0';
-    if (!acc_.useradd(t[1].c_str(), t[2].c_str(), priv, t[4].c_str())) printInvalid();
+    if (!acc_.useradd(t[1].c_str(), t[2].c_str(), priv, t[4].c_str())) { printInvalid(); return; }
+    std::string act = "useradd "; act += t[1];
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdDelete(const std::vector<std::string>& t) {
     if (t.size() != 2) { printInvalid(); return; }
-    if (!acc_.deleteUser(t[1].c_str())) printInvalid();
+    if (!acc_.deleteUser(t[1].c_str())) { printInvalid(); return; }
+    std::string act = "delete "; act += t[1];
+    recordOp(act.c_str());
 }
 
 // ---------- book commands ----------
@@ -146,6 +159,8 @@ inline void Executor::cmdBuy(const std::vector<std::string>& t) {
     double cost = 0;
     if (!book_.buyBook(t[1].c_str(), qty, cost)) { printInvalid(); return; }
     log_.recordIncome(cost);
+    std::string act = "buy "; act += t[1];
+    recordOp(act.c_str());
     std::printf("%.2f\n", cost);
 }
 
@@ -154,6 +169,8 @@ inline void Executor::cmdSelect(const std::vector<std::string>& t) {
     if (t.size() != 2) { printInvalid(); return; }
     if (!book_.ensureBook(t[1].c_str())) { printInvalid(); return; }
     selectedISBN_ = t[1];
+    std::string act = "select "; act += t[1];
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdModify(const std::vector<std::string>& t) {
@@ -197,7 +214,9 @@ inline void Executor::cmdModify(const std::vector<std::string>& t) {
     if (hasKeyword) f.keyword = keywordV.c_str();
     if (hasPrice)   f.price = &priceVal;
 
-    if (!book_.modifyBook(selectedISBN_.c_str(), f)) printInvalid();
+    if (!book_.modifyBook(selectedISBN_.c_str(), f)) { printInvalid(); return; }
+    std::string act = "modify "; act += selectedISBN_;
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdImport(const std::vector<std::string>& t) {
@@ -209,6 +228,8 @@ inline void Executor::cmdImport(const std::vector<std::string>& t) {
     if (qty <= 0 || cost <= 0) { printInvalid(); return; }
     if (!book_.importBook(selectedISBN_.c_str(), qty, cost)) { printInvalid(); return; }
     log_.recordExpense(cost);
+    std::string act = "import "; act += selectedISBN_;
+    recordOp(act.c_str());
 }
 
 inline void Executor::cmdShowFinance(const std::vector<std::string>& t) {
@@ -233,16 +254,44 @@ inline void Executor::cmdShowFinance(const std::vector<std::string>& t) {
 
 inline void Executor::cmdLog(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(7)) { printInvalid(); return; }
-    // Placeholder: emit a minimal report.
-    std::printf("(log report not implemented)\n");
+    if (t.size() != 1) { printInvalid(); return; }
+
+    std::printf("===== System Log =====\n");
+    std::printf("-- Operations --\n");
+    log_.traverseOperations([](const char*, const OpEntry& e) {
+        std::printf("%s\t%s\n", e.userid, e.action);
+        return true;
+    });
+    std::printf("-- Transactions --\n");
+    int i = 0;
+    log_.traverseTransactions([&](const char*, const LogEntry& e) {
+        std::printf("#%d\t+ %.2f - %.2f\n", i++, e.income, e.expense);
+        return true;
+    });
 }
 
 inline void Executor::cmdReportFinance(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(7)) { printInvalid(); return; }
-    std::printf("(finance report not implemented)\n");
+    if (t.size() != 2) { printInvalid(); return; }
+
+    long long n = log_.totalCount();
+    double inc = 0, exp = 0;
+    log_.showFinance(n, inc, exp);
+    std::printf("===== Finance Report =====\n");
+    std::printf("Transactions: %lld\n", n);
+    std::printf("Income:   %.2f\n", inc);
+    std::printf("Expense:  %.2f\n", exp);
+    std::printf("Profit:   %.2f\n", inc - exp);
 }
 
 inline void Executor::cmdReportEmployee(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(7)) { printInvalid(); return; }
-    std::printf("(employee report not implemented)\n");
+    if (t.size() != 2) { printInvalid(); return; }
+
+    std::printf("===== Employee Report =====\n");
+    if (log_.opCount() == 0) { std::printf("(no operations)\n"); return; }
+    log_.traverseOperations([](const char*, const OpEntry& e) {
+        std::printf("%s\t%s\n", e.userid, e.action);
+        return true;
+    });
 }

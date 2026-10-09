@@ -23,3 +23,6 @@ constexpr int ACC_VALUE_SIZE = 128;
 
 constexpr int LOG_KEY_SIZE   = 21;
 constexpr int LOG_VALUE_SIZE = 24;
+
+constexpr int OP_KEY_SIZE   = 21;
+constexpr int OP_VALUE_SIZE = 128;

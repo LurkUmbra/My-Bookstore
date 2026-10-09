@@ -43,6 +43,9 @@ private:
     void printBook(const char* isbn, const BookData& d) const;
     void printInvalid() const;
 
+    // Record an operation on behalf of the current user (or "(guest)").
+    void recordOp(const char* action);
+
     // "select"ed book per the spec is per-session; tracked here.
     std::string selectedISBN_;
 };
