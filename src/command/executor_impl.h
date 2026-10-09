@@ -256,16 +256,13 @@ inline void Executor::cmdLog(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(7)) { printInvalid(); return; }
     if (t.size() != 1) { printInvalid(); return; }
 
-    std::printf("===== System Log =====\n");
-    std::printf("-- Operations --\n");
     log_.traverseOperations([](const char*, const OpEntry& e) {
         std::printf("%s\t%s\n", e.userid, e.action);
         return true;
     });
-    std::printf("-- Transactions --\n");
     int i = 0;
     log_.traverseTransactions([&](const char*, const LogEntry& e) {
-        std::printf("#%d\t+ %.2f - %.2f\n", i++, e.income, e.expense);
+        std::printf("%d\t+ %.2f - %.2f\n", i++, e.income, e.expense);
         return true;
     });
 }
@@ -277,19 +274,17 @@ inline void Executor::cmdReportFinance(const std::vector<std::string>& t) {
     long long n = log_.totalCount();
     double inc = 0, exp = 0;
     log_.showFinance(n, inc, exp);
-    std::printf("===== Finance Report =====\n");
-    std::printf("Transactions: %lld\n", n);
-    std::printf("Income:   %.2f\n", inc);
-    std::printf("Expense:  %.2f\n", exp);
-    std::printf("Profit:   %.2f\n", inc - exp);
+    std::printf("transactions\t%lld\n", n);
+    std::printf("income\t%.2f\n", inc);
+    std::printf("expense\t%.2f\n", exp);
+    std::printf("profit\t%.2f\n", inc - exp);
 }
 
 inline void Executor::cmdReportEmployee(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(7)) { printInvalid(); return; }
     if (t.size() != 2) { printInvalid(); return; }
 
-    std::printf("===== Employee Report =====\n");
-    if (log_.opCount() == 0) { std::printf("(no operations)\n"); return; }
+    if (log_.opCount() == 0) { std::printf("\n"); return; }
     log_.traverseOperations([](const char*, const OpEntry& e) {
         std::printf("%s\t%s\n", e.userid, e.action);
         return true;
