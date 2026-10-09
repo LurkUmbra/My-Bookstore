@@ -59,7 +59,7 @@ private:
     BlockList<ACC_KEY_SIZE, ACC_VALUE_SIZE> accounts_;
     std::vector<std::string> loginStack_;
 
-    bool findAccount(const char* userid, AccountData& out);
+    bool findAccount(const char* userid, AccountData& out) const;
     bool isInLoginStack(const char* userid) const;
 };
 

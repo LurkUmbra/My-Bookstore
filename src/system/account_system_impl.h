@@ -17,7 +17,7 @@ inline AccountSystem::AccountSystem() : accounts_("accounts.dat") {
     }
 }
 
-inline bool AccountSystem::findAccount(const char* userid, AccountData& out) {
+inline bool AccountSystem::findAccount(const char* userid, AccountData& out) const {
     char buf[ACC_VALUE_SIZE];
     if (!accounts_.find(userid, buf)) return false;
     std::memcpy(&out, buf, sizeof(AccountData));
@@ -34,7 +34,7 @@ inline bool AccountSystem::isInLoginStack(const char* userid) const {
 inline int AccountSystem::currentPrivilege() const {
     if (loginStack_.empty()) return 0;
     AccountData d;
-    if (!const_cast<AccountSystem*>(this)->findAccount(loginStack_.back().c_str(), d)) return 0;
+    if (!findAccount(loginStack_.back().c_str(), d)) return 0;
     return d.privilege;
 }
 

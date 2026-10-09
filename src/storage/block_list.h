@@ -29,7 +29,7 @@ public:
     bool insert(const char* key, const char* value);
 
     // Find key. Copies value into out (at least VALUE_SIZE bytes). Returns true on hit.
-    bool find(const char* key, char* out);
+    bool find(const char* key, char* out) const;
 
     // Erase key. Returns true if found and removed.
     bool erase(const char* key);
@@ -37,18 +37,18 @@ public:
     // Visit every (key, value) in ascending key order.
     // fn returns false to stop early.
     template <typename Func>
-    void traverse(Func fn);
+    void traverse(Func fn) const;
 
     // Visit every (key, value) with lo <= key < hi.
     // fn returns false to stop early.
     template <typename Func>
-    void traverseRange(const char* lo, const char* hi, Func fn);
+    void traverseRange(const char* lo, const char* hi, Func fn) const;
 
 private:
-    std::fstream file_;
+    mutable std::fstream file_;   // mutable: read methods move the stream position
     int head_ = -1;
 
-    Block readBlock(int blockId);
+    Block readBlock(int blockId) const;
     void  writeBlock(int blockId, const Block& b);
 
     // Append a fresh block at the end of the file and return its block id.

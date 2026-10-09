@@ -117,7 +117,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::insert(const char* key, const char *value)
 }
 
 template<int KEY_SIZE, int VALUE_SIZE>
-bool BlockList<KEY_SIZE, VALUE_SIZE>::find(const char* key, char *out)
+bool BlockList<KEY_SIZE, VALUE_SIZE>::find(const char* key, char *out) const
 {
     int cur = head_;
     Block b;
@@ -205,7 +205,7 @@ bool BlockList<KEY_SIZE, VALUE_SIZE>::erase(const char* key)
 
 template <int KEY_SIZE, int VALUE_SIZE>
 template <typename Func>
-void BlockList<KEY_SIZE, VALUE_SIZE>::traverse(Func fn) {
+void BlockList<KEY_SIZE, VALUE_SIZE>::traverse(Func fn) const {
     int cur = head_;
     while (cur != -1) {
         Block b = readBlock(cur);
@@ -218,7 +218,7 @@ void BlockList<KEY_SIZE, VALUE_SIZE>::traverse(Func fn) {
 
 template <int KEY_SIZE, int VALUE_SIZE>
 template <typename Func>
-void BlockList<KEY_SIZE, VALUE_SIZE>::traverseRange(const char* lo, const char* hi, Func fn) {
+void BlockList<KEY_SIZE, VALUE_SIZE>::traverseRange(const char* lo, const char* hi, Func fn) const {
     int cur = head_;
     while (cur != -1) {
         Block b = readBlock(cur);
@@ -233,7 +233,7 @@ void BlockList<KEY_SIZE, VALUE_SIZE>::traverseRange(const char* lo, const char* 
 
 template<int KEY_SIZE, int VALUE_SIZE>
 typename BlockList<KEY_SIZE, VALUE_SIZE>::Block
-BlockList<KEY_SIZE, VALUE_SIZE>::readBlock(int blockId)
+BlockList<KEY_SIZE, VALUE_SIZE>::readBlock(int blockId) const
 {
     file_.seekg(sizeof(Block) * blockId, std::ios::beg);
     Block b{};
