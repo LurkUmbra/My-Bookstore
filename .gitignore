@@ -15,3 +15,5 @@ test_output/
 *bin  
 # web UI runtime data  
 web/data/ 
+
+web/server.log
