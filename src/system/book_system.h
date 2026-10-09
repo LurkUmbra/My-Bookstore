@@ -36,16 +36,29 @@ public:
                     const char* keyword, double price);
 
     // Fetch a book by ISBN.
-    bool getByISBN(const char* isbn, BookData& out);
+    bool getByISBN(const char* isbn, BookData& out) const;
+
+    // Ensure a book with the given ISBN exists. If not, create an empty one
+    // (only ISBN set; other fields zero). Used by "select".
+    bool ensureBook(const char* isbn);
+
+    // Each showBy* invokes fn(isbn, book) for every match, in ISBN order.
+    // fn returns false to stop early.
+    template <typename Func>
+    void showAll(Func fn) const;
 
     template <typename Func>
-    void showByName(const char* name, Func fn);
+    void showByName(const char* name, Func fn) const;
 
     template <typename Func>
-    void showByAuthor(const char* author, Func fn);
+    void showByAuthor(const char* author, Func fn) const;
 
     template <typename Func>
-    void showByKeyword(const char* keyword, Func fn);
+    void showByKeyword(const char* keyword, Func fn) const;
+
+    // Look up one book by ISBN and invoke fn exactly once on hit.
+    template <typename Func>
+    void showByISBN(const char* isbn, Func fn) const;
 
     // Fields to update in modifyBook. A null pointer means "leave unchanged".
     struct ModifyFields {

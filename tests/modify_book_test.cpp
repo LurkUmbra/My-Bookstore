@@ -17,19 +17,19 @@ static void clean() {
 
 static int countByName(BookSystem& sys, const char* name) {
     int n = 0;
-    sys.showByName(name, [&](const BookData&) { n++; return true; });
+    sys.showByName(name, [&](const char*, const BookData&) { n++; return true; });
     return n;
 }
 
 static int countByAuthor(BookSystem& sys, const char* author) {
     int n = 0;
-    sys.showByAuthor(author, [&](const BookData&) { n++; return true; });
+    sys.showByAuthor(author, [&](const char*, const BookData&) { n++; return true; });
     return n;
 }
 
 static int countByKeyword(BookSystem& sys, const char* kw) {
     int n = 0;
-    sys.showByKeyword(kw, [&](const BookData&) { n++; return true; });
+    sys.showByKeyword(kw, [&](const char*, const BookData&) { n++; return true; });
     return n;
 }
 

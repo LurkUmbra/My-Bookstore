@@ -64,7 +64,16 @@ inline bool BookSystem::createBook(const char* isbn, const char* name, const cha
     return true;
 }
 
-inline bool BookSystem::getByISBN(const char* isbn, BookData& out) {
+inline bool BookSystem::ensureBook(const char* isbn) {
+    char tmp[BOOK_VALUE_SIZE];
+    if (books_.find(isbn, tmp)) return true;
+    BookData d{};   // zero-initialized: empty name/author/keyword, price=0, stock=0
+    char packed[BOOK_VALUE_SIZE];
+    pack(d, packed);
+    return books_.insert(isbn, packed);
+}
+
+inline bool BookSystem::getByISBN(const char* isbn, BookData& out) const {
     char buf[BOOK_VALUE_SIZE];
     if (!books_.find(isbn, buf)) return false;
     unpack(buf, out);
@@ -169,7 +178,25 @@ inline bool BookSystem::importBook(const char* isbn, int quantity, double totalC
 }
 
 template <typename Func>
-inline void BookSystem::showByName(const char* name, Func fn) {
+inline void BookSystem::showAll(Func fn) const {
+    books_.traverse([&](const char* isbn, const char* buf) {
+        BookData d;
+        std::memcpy(&d, buf, sizeof(BookData));
+        return fn(isbn, d);
+    });
+}
+
+template <typename Func>
+inline void BookSystem::showByISBN(const char* isbn, Func fn) const {
+    char buf[BOOK_VALUE_SIZE];
+    if (!books_.find(isbn, buf)) return;
+    BookData d;
+    std::memcpy(&d, buf, sizeof(BookData));
+    fn(isbn, d);
+}
+
+template <typename Func>
+inline void BookSystem::showByName(const char* name, Func fn) const {
     char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
     std::snprintf(lo, IDX_KEY_SIZE, "%s|", name);
     std::snprintf(hi, IDX_KEY_SIZE, "%s}", name);
@@ -177,14 +204,14 @@ inline void BookSystem::showByName(const char* name, Func fn) {
     nameIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
         BookData d;
         if (getByISBN(isbn, d)) {
-            return fn(d);
+            return fn(isbn, d);
         }
         return true;
     });
 }
 
 template <typename Func>
-inline void BookSystem::showByAuthor(const char* author, Func fn) {
+inline void BookSystem::showByAuthor(const char* author, Func fn) const {
     char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
     std::snprintf(lo, IDX_KEY_SIZE, "%s|", author);
     std::snprintf(hi, IDX_KEY_SIZE, "%s}", author);
@@ -192,14 +219,14 @@ inline void BookSystem::showByAuthor(const char* author, Func fn) {
     authorIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
         BookData d;
         if (getByISBN(isbn, d)) {
-            return fn(d);
+            return fn(isbn, d);
         }
         return true;
     });
 }
 
 template <typename Func>
-inline void BookSystem::showByKeyword(const char* keyword, Func fn) {
+inline void BookSystem::showByKeyword(const char* keyword, Func fn) const {
     char lo[IDX_KEY_SIZE], hi[IDX_KEY_SIZE];
     std::snprintf(lo, IDX_KEY_SIZE, "%s|", keyword);
     std::snprintf(hi, IDX_KEY_SIZE, "%s}", keyword);
@@ -207,7 +234,7 @@ inline void BookSystem::showByKeyword(const char* keyword, Func fn) {
     keywordIdx_.traverseRange(lo, hi, [&](const char* /*idxKey*/, const char* isbn) {
         BookData d;
         if (getByISBN(isbn, d)) {
-            return fn(d);
+            return fn(isbn, d);
         }
         return true;
     });
