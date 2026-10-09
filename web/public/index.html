@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bookstore Terminal</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: #0c0c0c; color: #d0d0d0;
+  }
+  #left { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #header {
+    padding: 8px 14px; background: #161616; border-bottom: 1px solid #2a2a2a;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px;
+  }
+  #header .title { color: #4ec9b0; font-weight: bold; }
+  #header button {
+    background: #2a2a2a; color: #d0d0d0; border: 1px solid #3a3a3a;
+    padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 12px;
+  }
+  #header button:hover { background: #3a3a3a; }
+  #output {
+    flex: 1; overflow-y: auto; padding: 12px 16px; margin: 0;
+    white-space: pre-wrap; word-break: break-all;
+    font-size: 13.5px; line-height: 1.45;
+  }
+  #output .input-echo { color: #569cd6; }
+  #output .error { color: #f44747; }
+  #input-line {
+    display: flex; border-top: 1px solid #2a2a2a; padding: 8px 16px; background: #101010;
+  }
+  #input-line span { color: #4ec9b0; margin-right: 8px; user-select: none; }
+  #cmd {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #d0d0d0; font-family: inherit; font-size: 13.5px;
+  }
+  #right {
+    width: 260px; background: #141414; border-left: 1px solid #2a2a2a;
+    padding: 12px; overflow-y: auto; font-size: 12.5px;
+  }
+  #right h3 {
+    margin: 14px 0 6px; color: #4ec9b0; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  #right h3:first-child { margin-top: 0; }
+  #right button {
+    display: block; width: 100%; text-align: left; margin: 3px 0;
+    padding: 6px 8px; background: #1e1e1e; color: #c8c8c8;
+    border: 1px solid #2a2a2a; border-radius: 3px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+  }
+  #right button:hover { background: #2a2a2a; color: #fff; border-color: #4ec9b0; }
+  #right .hint { color: #666; font-size: 11px; margin: 6px 0 10px; }
+</style>
+</head>
+<body>
+  <div id="left">
+    <div id="header">
+      <span class="title">Bookstore Terminal</span>
+      <span>
+        <button onclick="resetAll()">Reset Session</button>
+      </span>
+    </div>
+    <pre id="output"></pre>
+    <div id="input-line">
+      <span>&gt;</span>
+      <input id="cmd" autocomplete="off" autofocus placeholder="type a command and press Enter">
+    </div>
+  </div>
+  <div id="right">
+    <h3>Basic</h3>
+    <button onclick="fill('quit')">quit</button>
+
+    <h3>Account</h3>
+    <button onclick="fill('su root sjtu')">su root sjtu</button>
+    <button onclick="fill('su ')">su [userid] [pw]</button>
+    <button onclick="fill('logout')">logout</button>
+    <button onclick="fill('register alice pw Alice')">register</button>
+    <button onclick="fill('passwd ')" >passwd</button>
+    <button onclick="fill('useradd bob pw 3 Bob')">useradd</button>
+    <button onclick="fill('delete ')" >delete</button>
+
+    <h3>Book</h3>
+    <button onclick="fill('show')">show (all)</button>
+    <button onclick="fill('show -ISBN=')">show -ISBN</button>
+    <button onclick="fill('show -name=\"\"')">show -name</button>
+    <button onclick="fill('show -author=\"\"')">show -author</button>
+    <button onclick="fill('show -keyword=\"\"')">show -keyword</button>
+    <button onclick="fill('select ')" >select</button>
+    <button onclick="fill('modify -price=10')">modify</button>
+    <button onclick="fill('buy ')">buy</button>
+    <button onclick="fill('import 5 100')">import</button>
+
+    <h3>Finance</h3>
+    <button onclick="fill('show finance')">show finance</button>
+    <button onclick="fill('show finance 1')">show finance 1</button>
+    <button onclick="fill('report finance')">report finance</button>
+    <button onclick="fill('report employee')">report employee</button>
+    <button onclick="fill('log')">log</button>
+
+    <div class="hint">Click a button to load a template; edit before Enter.</div>
+  </div>
+
+<script>
+const out = document.getElementById('output');
+const input = document.getElementById('cmd');
+
+function append(text, cls) {
+  if (!text) return;
+  const span = document.createElement('span');
+  if (cls) span.className = cls;
+  span.textContent = text;
+  out.appendChild(span);
+  out.scrollTop = out.scrollHeight;
+}
+
+function fill(cmd) { input.value = cmd; input.focus(); }
+
+async function send() {
+  const cmd = input.value;
+  input.value = '';
+  append('> ' + cmd + '\n', 'input-echo');
+  try {
+    const r = await fetch('/api/cmd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd })
+    });
+    const data = await r.json();
+    if (data.out) append(data.out);
+  } catch (e) {
+    append('network error: ' + e + '\n', 'error');
+  }
+}
+
+async function resetAll() {
+  await fetch('/api/reset', { method: 'POST' });
+  append('[session reset]\n', 'error');
+}
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') send();
+});
+</script>
+</body>
+</html>

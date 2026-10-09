@@ -12,4 +12,6 @@ code
 # 测试运行产物
 test_data/
 test_output/
-*bin
+*bin  
+# web UI runtime data  
+web/data/ 
