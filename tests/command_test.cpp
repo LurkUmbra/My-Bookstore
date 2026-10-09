@@ -199,6 +199,33 @@ int main() {
            "su root sjtu\nselect B1\nmodify -name=\"M\" -author=\"W\" -keyword=\"k\" -price=10\nbuy B1 2\nimport 3 60\nshow finance\nquit\n",
            "20.00\n+ 20.00 - 60.00");
 
+
+    // ---------- argument validation ----------
+    expect("userid with illegal char -> Invalid",
+           "register alice! pw Alice\nquit\n", "Invalid");
+    expect("userid too long -> Invalid",
+           "register aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa pw Alice\nquit\n", "Invalid");
+    expect("username with control char -> Invalid",
+           "register alice pw Ali\tce\nquit\n", "Invalid");
+    expect("isbn too long -> Invalid",
+           "su root sjtu\nselect aaaaaaaaaaaaaaaaaaaaaaaaaaaa\nquit\n", "Invalid");
+    expect("quantity with letters -> Invalid",
+           "su root sjtu\nbuy X abc\nquit\n", "Invalid");
+    expect("quantity overflow -> Invalid",
+           "su root sjtu\nbuy X 99999999999\nquit\n", "Invalid");
+    expect("price with letters -> Invalid",
+           "su root sjtu\nselect B1\nmodify -price=12a\nquit\n", "Invalid");
+    expect("price with two dots -> Invalid",
+           "su root sjtu\nselect B1\nmodify -price=1.2.3\nquit\n", "Invalid");
+    expect("keyword duplicate segment -> Invalid",
+           "su root sjtu\nselect B1\nmodify -keyword=\"a|a\"\nquit\n", "Invalid");
+    expect("show name without quotes -> Invalid",
+           "su root sjtu\nshow -name=Math\nquit\n", "Invalid");
+    expect("modify duplicate -name -> Invalid",
+           "su root sjtu\nselect B1\nmodify -name=\"A\" -name=\"B\"\nquit\n", "Invalid");
+    expect("useradd priv 2 -> Invalid",
+           "su root sjtu\nuseradd x pw 2 X\nquit\n", "Invalid");
+
     cleanData();
     std::printf("\n==== Passed: %d, Failed: %d ====\n", passed, failed);
     return failed == 0 ? 0 : 1;

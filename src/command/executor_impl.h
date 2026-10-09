@@ -1,9 +1,12 @@
 #pragma once
 #include "executor.h"
 #include "tokenizer.h"
+#include "validator.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>
+#include <sstream>
 #include <string>
 
 inline Executor::Executor(AccountSystem& acc, BookSystem& book, LogSystem& log)
@@ -25,13 +28,6 @@ inline void Executor::recordOp(const char* action) {
 inline void Executor::printBook(const char* isbn, const BookData& d) const {
     std::printf("%s\t%s\t%s\t%s\t%.2f\t%d\n",
                 isbn, d.name, d.author, d.keyword, d.price, d.stock);
-}
-
-// Strip a leading/trailing double quote if both present.
-static std::string unquote(const std::string& s) {
-    if (s.size() >= 2 && s.front() == '"' && s.back() == '"')
-        return s.substr(1, s.size() - 2);
-    return s;
 }
 
 inline void Executor::execute(const std::string& line) {
@@ -66,6 +62,8 @@ inline void Executor::execute(const std::string& line) {
 
 inline void Executor::cmdSu(const std::vector<std::string>& t) {
     if (t.size() != 2 && t.size() != 3) { printInvalid(); return; }
+    if (!isValidUserID(t[1])) { printInvalid(); return; }
+    if (t.size() == 3 && !isValidPassword(t[2])) { printInvalid(); return; }
     const char* userid = t[1].c_str();
     const char* pw = (t.size() == 3) ? t[2].c_str() : nullptr;
     if (!acc_.login(userid, pw)) printInvalid();
@@ -78,6 +76,9 @@ inline void Executor::cmdLogout(const std::vector<std::string>& t) {
 
 inline void Executor::cmdRegister(const std::vector<std::string>& t) {
     if (t.size() != 4) { printInvalid(); return; }
+    if (!isValidUserID(t[1]) || !isValidPassword(t[2]) || !isValidUsername(t[3])) {
+        printInvalid(); return;
+    }
     if (!acc_.registerUser(t[1].c_str(), t[2].c_str(), t[3].c_str())) { printInvalid(); return; }
     std::string act = "register "; act += t[1];
     recordOp(act.c_str());
@@ -85,6 +86,12 @@ inline void Executor::cmdRegister(const std::vector<std::string>& t) {
 
 inline void Executor::cmdPasswd(const std::vector<std::string>& t) {
     if (t.size() != 3 && t.size() != 4) { printInvalid(); return; }
+    if (!isValidUserID(t[1])) { printInvalid(); return; }
+    if (t.size() == 4) {
+        if (!isValidPassword(t[2]) || !isValidPassword(t[3])) { printInvalid(); return; }
+    } else {
+        if (!isValidPassword(t[2])) { printInvalid(); return; }
+    }
     const char* userid = t[1].c_str();
     const char* cur = (t.size() == 4) ? t[2].c_str() : nullptr;
     const char* nw  = (t.size() == 4) ? t[3].c_str() : t[2].c_str();
@@ -95,8 +102,10 @@ inline void Executor::cmdPasswd(const std::vector<std::string>& t) {
 
 inline void Executor::cmdUseradd(const std::vector<std::string>& t) {
     if (t.size() != 5) { printInvalid(); return; }
-    if (t[3].size() != 1 || t[3][0] < '0' || t[3][0] > '9') { printInvalid(); return; }
-    int priv = t[3][0] - '0';
+    if (!isValidUserID(t[1]) || !isValidPassword(t[2])) { printInvalid(); return; }
+    int priv = 0;
+    if (!isValidPrivilegeStr(t[3], priv)) { printInvalid(); return; }
+    if (!isValidUsername(t[4])) { printInvalid(); return; }
     if (!acc_.useradd(t[1].c_str(), t[2].c_str(), priv, t[4].c_str())) { printInvalid(); return; }
     std::string act = "useradd "; act += t[1];
     recordOp(act.c_str());
@@ -104,6 +113,7 @@ inline void Executor::cmdUseradd(const std::vector<std::string>& t) {
 
 inline void Executor::cmdDelete(const std::vector<std::string>& t) {
     if (t.size() != 2) { printInvalid(); return; }
+    if (!isValidUserID(t[1])) { printInvalid(); return; }
     if (!acc_.deleteUser(t[1].c_str())) { printInvalid(); return; }
     std::string act = "delete "; act += t[1];
     recordOp(act.c_str());
@@ -130,19 +140,19 @@ inline void Executor::cmdShow(const std::vector<std::string>& t) {
     const std::string& arg = t[1];
     if (arg.rfind("-ISBN=", 0) == 0) {
         std::string v = arg.substr(6);
-        if (v.empty()) { printInvalid(); return; }
+        if (!isValidISBN(v)) { printInvalid(); return; }
         book_.showByISBN(v.c_str(), printer);
     } else if (arg.rfind("-name=", 0) == 0) {
-        std::string v = unquote(arg.substr(6));
-        if (v.empty()) { printInvalid(); return; }
+        std::string v;
+        if (!splitQuoted(arg, "-name=", v) || !isValidBookField(v)) { printInvalid(); return; }
         book_.showByName(v.c_str(), printer);
     } else if (arg.rfind("-author=", 0) == 0) {
-        std::string v = unquote(arg.substr(8));
-        if (v.empty()) { printInvalid(); return; }
+        std::string v;
+        if (!splitQuoted(arg, "-author=", v) || !isValidBookField(v)) { printInvalid(); return; }
         book_.showByAuthor(v.c_str(), printer);
     } else if (arg.rfind("-keyword=", 0) == 0) {
-        std::string v = unquote(arg.substr(9));
-        if (v.empty()) { printInvalid(); return; }
+        std::string v;
+        if (!splitQuoted(arg, "-keyword=", v) || !isValidBookField(v)) { printInvalid(); return; }
         if (v.find('|') != std::string::npos) { printInvalid(); return; }
         book_.showByKeyword(v.c_str(), printer);
     } else {
@@ -154,6 +164,7 @@ inline void Executor::cmdShow(const std::vector<std::string>& t) {
 inline void Executor::cmdBuy(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(1)) { printInvalid(); return; }
     if (t.size() != 3) { printInvalid(); return; }
+    if (!isValidISBN(t[1]) || !isValidQuantityStr(t[2])) { printInvalid(); return; }
     int qty = std::atoi(t[2].c_str());
     if (qty <= 0) { printInvalid(); return; }
     double cost = 0;
@@ -167,6 +178,7 @@ inline void Executor::cmdBuy(const std::vector<std::string>& t) {
 inline void Executor::cmdSelect(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(3)) { printInvalid(); return; }
     if (t.size() != 2) { printInvalid(); return; }
+    if (!isValidISBN(t[1])) { printInvalid(); return; }
     if (!book_.ensureBook(t[1].c_str())) { printInvalid(); return; }
     selectedISBN_ = t[1];
     std::string act = "select "; act += t[1];
@@ -186,23 +198,32 @@ inline void Executor::cmdModify(const std::vector<std::string>& t) {
     for (size_t i = 1; i < t.size(); ++i) {
         const std::string& a = t[i];
         if (a.rfind("-ISBN=", 0) == 0) {
-            // ISBN change: treat as invalid for simplicity (not in spec examples as required change)
+            // ISBN modification is not yet supported.
             printInvalid(); return;
         } else if (a.rfind("-name=", 0) == 0) {
             if (hasName) { printInvalid(); return; }
-            nameV = unquote(a.substr(6)); hasName = true;
-            if (nameV.empty()) { printInvalid(); return; }
+            if (!splitQuoted(a, "-name=", nameV) || !isValidBookField(nameV)) { printInvalid(); return; }
+            hasName = true;
         } else if (a.rfind("-author=", 0) == 0) {
             if (hasAuthor) { printInvalid(); return; }
-            authorV = unquote(a.substr(8)); hasAuthor = true;
-            if (authorV.empty()) { printInvalid(); return; }
+            if (!splitQuoted(a, "-author=", authorV) || !isValidBookField(authorV)) { printInvalid(); return; }
+            hasAuthor = true;
         } else if (a.rfind("-keyword=", 0) == 0) {
             if (hasKeyword) { printInvalid(); return; }
-            keywordV = unquote(a.substr(9)); hasKeyword = true;
-            if (keywordV.empty()) { printInvalid(); return; }
+            if (!splitQuoted(a, "-keyword=", keywordV) || !isValidBookField(keywordV)) { printInvalid(); return; }
+            std::set<std::string> seen;
+            std::istringstream iss(keywordV);
+            std::string seg;
+            while (std::getline(iss, seg, '|')) {
+                if (!isValidBookField(seg)) { printInvalid(); return; }
+                if (!seen.insert(seg).second) { printInvalid(); return; }
+            }
+            hasKeyword = true;
         } else if (a.rfind("-price=", 0) == 0) {
             if (hasPrice) { printInvalid(); return; }
-            priceVal = std::atof(a.substr(7).c_str()); hasPrice = true;
+            std::string pv = a.substr(7);
+            if (!isValidPriceStr(pv)) { printInvalid(); return; }
+            priceVal = std::atof(pv.c_str()); hasPrice = true;
         } else {
             printInvalid(); return;
         }
@@ -223,6 +244,7 @@ inline void Executor::cmdImport(const std::vector<std::string>& t) {
     if (!isPrivilegeAtLeast(3)) { printInvalid(); return; }
     if (selectedISBN_.empty())  { printInvalid(); return; }
     if (t.size() != 3)          { printInvalid(); return; }
+    if (!isValidQuantityStr(t[1]) || !isValidPriceStr(t[2])) { printInvalid(); return; }
     int qty = std::atoi(t[1].c_str());
     double cost = std::atof(t[2].c_str());
     if (qty <= 0 || cost <= 0) { printInvalid(); return; }
@@ -243,6 +265,7 @@ inline void Executor::cmdShowFinance(const std::vector<std::string>& t) {
         return;
     }
     if (t.size() == 3) {
+        if (!isValidQuantityStr(t[2])) { printInvalid(); return; }
         long long count = std::atoll(t[2].c_str());
         if (count == 0) { std::printf("\n"); return; }   // spec: Count 0 -> blank line
         if (!log_.showFinance(count, inc, exp)) { printInvalid(); return; }
